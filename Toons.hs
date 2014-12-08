@@ -9,7 +9,12 @@ data Displayable = CleanFrame
                  | FullSheet
                  | Reaper CardinalDirection
                  | Text String
-                 | Box Width Height
+                 | FancyBox
+                 | Box
+                 | Grass
+                 | CobbleStone
+                 | Cloud Int
+                 | Moon
                  deriving (Typeable, Show)
 
 data CardinalDirection = North
@@ -19,7 +24,7 @@ data CardinalDirection = North
                        deriving (Eq, Show, Typeable)
 
 velocityToDirections :: Velocity -> [Direction]
-velocityToDirections (V2 x y) = [x',y']
+velocityToDirections (Velocity (V2 x y)) = [x',y']
     where x' = if x == 0 then None
                  else if x > 0 then Right'
                         else Left'

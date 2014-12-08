@@ -120,10 +120,30 @@ newReaperRenderer s ss = do
                                    West  -> west pos scl rot
                                    North -> north pos scl rot
 
+newCloudRenderer :: ShaderProgram -> SpriteSheet -> IO (Int -> RenderSprite)
+newCloudRenderer s ss = do
+    one   <- newSpriteRenderer s ss (V2 0 1162) 26 4
+    two   <- newSpriteRenderer s ss (V2 0 1167) 26 4
+    three <- newSpriteRenderer s ss (V2 0 1172) 26 4
+    four  <- newSpriteRenderer s ss (V2 0 1177) 26 4
+
+    return $ \i pos scl rot -> case i of
+                                   1 -> one pos scl rot
+                                   2 -> two pos scl rot
+                                   3 -> three pos scl rot
+                                   4 -> four pos scl rot
+                                   _ -> return ()
+
+newMoonRenderer :: ShaderProgram -> SpriteSheet -> IO RenderSprite
+newMoonRenderer s ss = newSpriteRenderer s ss (V2 135 1028) 40 34
+
+newCobbleStoneRenderer :: ShaderProgram -> SpriteSheet -> IO RenderSprite
+newCobbleStoneRenderer s ss = newSpriteRenderer s ss (V2 0 0) 32 32
+
 newBoxRenderer :: ShaderProgram -> IO RenderSprite
 newBoxRenderer s = do
-    let ps = [V2 (-0.5) (-0.5), V2 0.5 (-0.5), V2 0.5 0.5, V2 (-0.5) 0.5]
-        ts = [V2 0 0, V2 1 0, V2 1 1, V2 0 1]
+    let ps = [V2 (-0.5) (-0.5), V2 0.5 (-0.5), V2 0.5 0.5, V2 (-0.5) 0.5] :: [V2 Float]
+        ts = [V2 0 0, V2 1 0, V2 1 1, V2 0 1] :: [V2 Float]
 
     vbo <- bufferVBO s (position2 ps)
     tvbo <- bufferVBO s (texcoord ts)
@@ -136,6 +156,47 @@ newBoxRenderer s = do
         updateUniform s $ uniformM4f "modelview" (mv :: M44 Float)
         drawArrays TriangleFan 0 4
 
+newFancyBoxRenderer :: ShaderProgram -> SpriteSheet -> IO RenderSprite
+newFancyBoxRenderer s ss = do
+    tl <- newSpriteRenderer s ss (V2 184 1084) 8 8
+    tr <- newSpriteRenderer s ss (V2 193 1084) 8 8
+    bl <- newSpriteRenderer s ss (V2 202 1084) 8 8
+    br <- newSpriteRenderer s ss (V2 211 1084) 8 8
+    l <- newSpriteRenderer s ss (V2 220 1084) 8 8
+    r <- newSpriteRenderer s ss (V2 229 1084) 8 8
+    t <- newSpriteRenderer s ss (V2 238 1084) 8 8
+    b <- newSpriteRenderer s ss (V2 184 1093) 8 8
+    box <- newBoxRenderer s
+    return $ \pos (V2 hw hh) rot -> do
+        let scl = V2 1 1
+            topleft = pos ^+^ V2 (-hw) (-hh)
+            topright = pos ^+^ V2 hw (-hh)
+            botleft = pos ^+^ V2 (-hw) hh
+            botright = pos ^+^ V2 hw hh
+            startx = topleft^._x + 8
+            endx = topright^._x - 8
+            starty = topleft^._y + 8
+            endy = botleft^._y - 8
+            nhs = fromIntegral $ ceiling ((endx - startx) / 8)
+            nvs = fromIntegral $ ceiling ((endy - starty) / 8)
+
+        box pos ((botright - 4) - (topleft + 4)) 0
+
+        forM_ (map (\i -> V2 (startx + i*8) (topleft^._y)) [0..nhs]) $ \p -> do
+            t p scl rot
+        forM_ (map (\i -> V2 (startx + i*8) (botleft^._y)) [0..nhs]) $ \p -> do
+            b p scl rot
+        forM_ (map (\i -> V2 (topleft^._x) (starty + i*8)) [0..nvs]) $ \p -> do
+            l p scl rot
+        forM_ (map (\i -> V2 (topright^._x) (starty + i*8)) [0..nvs]) $ \p -> do
+            r p scl rot
+
+        tl topleft scl rot
+        tr topright scl rot
+        bl botleft scl rot
+        br botright scl rot
+
+
 newRenderer :: Window -> IO Renderer
 newRenderer window = do
     --s  <- simple2dTextureShader
@@ -146,6 +207,10 @@ newRenderer window = do
     drawReaper    <- newReaperRenderer s ss
     drawText      <- newTextRenderer s ss
     drawBox       <- newBoxRenderer s
+    drawCloud     <- newCloudRenderer s ss
+    drawMoon      <- newMoonRenderer s ss
+    drawCobble    <- newCobbleStoneRenderer s ss
+    drawFancyBox  <- newFancyBoxRenderer s ss
 
     currentProgram $= (Just $ program s)
     clearColor $= toColor4 (black :: V4 Float)
@@ -170,7 +235,12 @@ newRenderer window = do
                 updateUniform s $ uniformi "sampler" (0 :: Int)
                 updateUniform s $ uniformM4f "projection" $ ortho 0 w' 0 h' 0 1
 
-            FullSheet -> drawFullSheet pos scl rot
-            Reaper d  -> drawReaper d pos scl rot
-            Text str  -> drawText str pos scl rot
-            Box hw hh -> drawBox pos (V2 (2*hw) (2*hh) * scl) rot
+            FullSheet   -> drawFullSheet pos scl rot
+            Reaper d    -> drawReaper d pos scl rot
+            Text str    -> drawText str pos scl rot
+            Box         -> drawBox pos scl rot
+            Cloud i     -> drawCloud i pos scl rot
+            Moon        -> drawMoon pos scl rot
+            CobbleStone -> drawCobble pos scl rot
+            FancyBox    -> drawFancyBox pos scl rot
+            _           -> return ()

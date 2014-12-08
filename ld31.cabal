@@ -69,7 +69,8 @@ executable ld31
                        GLUtil,
                        GLFW-b,
                        OpenGL,
-                       extensible-effects
+                       extensible-effects,
+                       random
 
   -- Directories containing source files.
   -- hs-source-dirs:

@@ -33,12 +33,12 @@ dpadDirectionMap =
 
 bumperRotationMap :: RotationMap Int
 bumperRotationMap =
-    [ (4, -1)
-    , (5, 1)
+    [ (4, Rotation $ -1)
+    , (5, Rotation 1)
     ]
 
 playerDirection :: Eq a => Float -> DirectionMap a -> PlayerDirection a
-playerDirection speed keyMap keys t = t *^ v
+playerDirection speed keyMap keys t = Velocity $ t *^ v
     where v = (speed *^) $ sum $ map toV directions
           directions = catMaybes $ S.toList $ S.map (`lookup` keyMap) keys
           toV Left'  = V2 (-1) 0
@@ -48,7 +48,7 @@ playerDirection speed keyMap keys t = t *^ v
           toV None   = zero
 
 playerRotation :: Eq a => RotationMap a -> PlayerRotation a
-playerRotation keyMap keys t = t * r
-    where r = sum rotations
+playerRotation keyMap keys t = Rotation $ t * r
+    where r = sum $ map unrot rotations
           rotations = catMaybes $ S.toList $ S.map (`lookup` keyMap) keys
 

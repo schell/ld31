@@ -4,43 +4,56 @@
 {-# LANGUAGE StandaloneDeriving #-}
 module Types where
 
-import Yarn
 import Linear
 import Control.Lens
 import Data.Typeable
-import Control.Eff.State.Strict
-import qualified Data.IntMap as IM
-
 
 newtype ID = ID { unID :: Int } deriving (Show, Read, Eq, Ord, Typeable, Enum, Num)
 newtype Player = Player ID deriving (Typeable)
-type Component a = IM.IntMap a
-type Entity a = State (Component a)
---type CanRead a r = Member (Reader a) r
---type CanModify a r = Member (State a) r
-type VaryingComponent m a = Component (Varying m a)
-type Varying m a = Yarn m () a
 
 type Color = V4 Float
 type Width = Float
 type Height = Float
 type HalfWidth = Float
 type HalfHeight = Float
-type Rotation = Float
 type SeparatingAxis = V2 Float
 type Line = (V2 Float, V2 Float)
-type Position = V2 Float
-type PositionOffset = V2 Float
-type Velocity = V2 Float
-newtype Name = Name String deriving (Show, Typeable)
+newtype Size = Size (V2 Float) deriving (Typeable, Show, Eq, Ord)
 
-data AABB = AABB { aabbPosition :: Position
-                 , aabbHalfWidth :: HalfWidth
-                 , aabbHalfHeight :: HalfHeight
+unsize :: Size -> V2 Float
+unsize (Size v) = v
+
+newtype Position = Position (V2 Float) deriving (Typeable, Show, Eq, Ord)
+
+unpos :: Position -> V2 Float
+unpos (Position v) = v
+
+newtype Velocity = Velocity (V2 Float) deriving (Typeable)
+
+unvel :: Velocity -> V2 Float
+unvel (Velocity v) = v
+
+newtype Name = Name String deriving (Show, Typeable)
+newtype PositionOffset = PositionOffset (V2 Float) deriving (Typeable)
+
+unposoff :: PositionOffset -> V2 Float
+unposoff (PositionOffset v) = v
+
+newtype Rotation = Rotation Float deriving (Typeable, Show, Eq, Ord)
+
+unrot :: Rotation -> Float
+unrot (Rotation r) = r
+
+newtype Scale = Scale (V2 Float) deriving (Show, Eq, Typeable)
+
+unscl :: Scale -> V2 Float
+unscl (Scale v) = v
+
+data AABB = AABB { aabbCenter     :: V2 Float
+                 , aabbHalfVector :: V2 Float
                  } deriving (Show, Eq, Ord, Typeable)
-makeLensesFor [("aabbPosition", "aabbPositionLens")
-              ,("aabbHalfWidth", "aabbHalfWidthLens")
-              ,("aabbHalfHeight", "aabbHalfHeightLens")
+makeLensesFor [("aabbCenter", "aabbCenterLens")
+              ,("aabbHalfVector", "aabbHalfVectorLens")
               ] ''AABB
 
 data Mass = Kilos Float
@@ -79,3 +92,8 @@ data Direction = Up
                | Right'
                | None
                deriving (Eq, Ord, Show, Typeable)
+
+data Path = PathVertical
+          | PathHorizontal
+          | PathOpen
+          deriving (Eq)

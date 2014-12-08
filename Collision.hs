@@ -6,7 +6,6 @@ import Types
 import Data.Foldable
 import Control.Applicative
 import Control.Lens
-import Debug.Trace
 
 aabbAxes :: [SeparatingAxis]
 aabbAxes =
@@ -19,7 +18,7 @@ aabbLines a = [(tl, tr), (tr, br), (br, bl), (bl, tl)]
     where [tl,tr,bl,br] = aabbPoints a
 
 aabbPoints :: AABB -> [V2 Float]
-aabbPoints (AABB (V2 x y) hw hh) = [V2 l t, V2 r t, V2 l b, V2 r b]
+aabbPoints (AABB (V2 x y) (V2 hw hh)) = [V2 l t, V2 r t, V2 l b, V2 r b]
     where (l,t,r,b) = (x - hw, y - hh, x + hw, y + hh)
 
 aabbProjectionRange :: AABB -> V2 Float -> (Float, Float)
@@ -38,13 +37,13 @@ collideOnAxis a b axis = if col then Just $ u ^* v else Nothing
     where rA@(n1, n2) = aabbProjectionRange a axis
           rB@(m1, m2) = aabbProjectionRange b axis
           v = min (m2 - n1) (n2 - m1)
-          d = a^.aabbPositionLens - b^.aabbPositionLens
-          s = d / abs d
+          d = (a^.aabbCenterLens) ^-^ (b^.aabbCenterLens)
+          s = (\n -> if n >= 0 then 1 else (-1)) <$> d
           u = s * signorm axis
           col = collidesWithRange rA rB
 
 collidedInto :: AABB -> AABB -> Maybe (V2 Float)
-collidedInto a b = ((\v -> trace (show axisOverlaps) v) . minimumBy dv) <$> (sequence axisOverlaps)
+collidedInto a b = (minimumBy dv) <$> (sequence axisOverlaps)
     where axisOverlaps = map (collideOnAxis a b) aabbAxes
           dv v1 v2 = compare (norm v1) (norm v2)
 
@@ -52,16 +51,21 @@ collideBodies :: (PhysicalBody, PhysicalBody) -> (PhysicalBody, PhysicalBody)
 collideBodies (a, b)
     | (not $ isMobile a) && (not $ isMobile b) = (a, b)
     | otherwise = (a', b')
-        where p1 = a ^. pbAABBLens.aabbPositionLens
-              p2 = b ^. pbAABBLens.aabbPositionLens
+        where p1 = a ^. pbAABBLens.aabbCenterLens
+              p2 = b ^. pbAABBLens.aabbCenterLens
               mv = (pbAABB a) `collidedInto` (pbAABB b)
-              ma = 1 - (massOf $ pbMass a) / tm
-              mb = 1 - (massOf $ pbMass b) / tm
+              ma = (massOf $ pbMass a) / tm
+              mb = (massOf $ pbMass b) / tm
+              (va,vb) = if isMobile a && isMobile b
+                         then (1 - ma, 1 - mb)
+                         else if isMobile a
+                                then (1,0)
+                                else (0,1)
               tm = (massOf $ pbMass a) + (massOf $ pbMass b)
-              p1' = maybe p1 ((p1 ^+^) . (ma *^)) mv
-              p2' = maybe p2 ((p2 ^+^) . ((-mb) *^)) mv
-              a' = a & pbAABBLens.aabbPositionLens .~ p1'
-              b' = b & pbAABBLens.aabbPositionLens .~ p2'
+              p1' = maybe p1 ((p1 ^+^) . (va *^)) mv
+              p2' = maybe p2 ((p2 ^-^) . (vb *^)) mv
+              a' = a & pbAABBLens.aabbCenterLens .~ p1'
+              b' = b & pbAABBLens.aabbCenterLens .~ p2'
 
 foldCollision :: (Int, PhysicalBody) -> [(Int, PhysicalBody)] -> [(Int, PhysicalBody)]
 foldCollision p [] = [p]
