@@ -172,15 +172,20 @@ collidePlayer = do
         Nothing -> return ()
         Just ps -> modify $ IM.union (fmap (static . Position) ps)
 
-play = do
+stepIn = do
     -- Tick time.
     t' <- lift $ getCurrentTime
     t  <- get
     put t'
     let dt = realToFrac $ diffUTCTime t' t :: Float
-
     -- Get the user events and fold them into our InputEnv.
     loadNewEvents
+    return dt
+
+play = do
+
+
+    dt <- stepIn
 
     -- Possibly reset.
     keys <- ienvKeysDown <$> get
